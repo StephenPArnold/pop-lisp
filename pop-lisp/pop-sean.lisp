@@ -292,6 +292,8 @@ or before the link, and it's got an effect which counters the link's effect."
 (defun inconsistent-p (plan)
   "Plan orderings are inconsistent"
   ;; hint: cyclic-assoc-list
+  (cyclic-assoc-list (plan-orderings plan))
+;
 )
 (defun pick-precond (plan)
   "Return ONE (operator . precondition) pair in the plan that has not been met yet.
@@ -776,5 +778,5 @@ doesn't matter really -- but NOT including a goal or start operator")
 
 (print "about to call bench test")
 (if *bench-test* (test-before-p))
-
+(test-inconsistent-p)
 
