@@ -1,5 +1,6 @@
 (setf *debug* t)
 (setf *bench-test* t)
+(if *bench-test* (load "bench-test.lisp"))
 (defun dprint (some-variable &optional (additional-message '()))
 	"Debug Print - useful for allowing error/status messages
 to be printed while debug=t."
@@ -275,47 +276,7 @@ plus a pointer to the start operator and to the goal operator."
 	(dprint (reachable (plan-orderings plan) (operator-name operator1) (operator-name operator2))) 
 ;;; perhaps you have an existing function which could help here.
 )
-(defun test-before-p ()
-	(let ((plan '()) (start '()) (goal '()) (a '()) (b '()))
-		(setf start 
-			(make-operator
-				:name 'start ;;named will be used n assoc lists
-				:uniq (gensym) ;;differentiate two operators of same name i think
-				:preconditions nil
-				:effects '((t i-am-crazy) (nil i-am-frodo-baggins) (nil i-have-a-phd) (nil this-assignment-is-done) (t i-like-video-games))))
-		(setf goal 
-			(make-operator
-				:name 'goal
-				:uniq (gensym)
-				:preconditions '((nil i-am-crazy) (t i-am-frodo-baggins) (t i-have-a-phd) (t this-assignment-is-done) (t i-like-video-games))
-				:effects nil))
-		(setf a
-			(make-operator 
-				:name 'a
-				:uniq (gensym)
-				:preconditions '((nil i-have-a-phd) (nil i-am-frodo-baggins))
-				:effects '((t i-am-frodo-baggins) (nil i-am-crazy))))
-		(setf b 
-			(make-operator 
-				:name 'b
-				:uniq (gensym)
-				:preconditions '((t i-am-frodo-baggins))
-				:effects '((t i-have-a-phd))))
-		(setf plan (make-plan
-			:operators (list start goal a b)
-			:orderings (list (cons 'start 'goal) (cons 'start 'a) (cons 'a 'b) (cons 'b 'goal))
-			:links nil
-			:start start
-			:goal goal))
-		(print "should be true")
-		(print (before-p a b plan))
-		(print "should be false")
-		(print (before-p b a plan))
-		
-		
-		
-	)
-)
+
 (defun link-exists-for-precondition-p (precond operator plan)
   "T if there's a link for the precond for a given operator, else nil.
 precond is a predicate."
@@ -332,7 +293,6 @@ or before the link, and it's got an effect which counters the link's effect."
   "Plan orderings are inconsistent"
   ;; hint: cyclic-assoc-list
 )
-
 (defun pick-precond (plan)
   "Return ONE (operator . precondition) pair in the plan that has not been met yet.
 If there is no such pair, return nil"
