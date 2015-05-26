@@ -1,3 +1,15 @@
+(setf *debug* t)
+(setf *bench-test* t)
+(defun dprint (some-variable &optional (additional-message '()))
+	"Debug Print - useful for allowing error/status messages
+to be printed while debug=t."
+  (if *debug*
+    (progn
+      (if additional-message (print additional-message) nil)
+      (print some-variable))
+    some-variable))
+
+
 ;;;;;;;; SIMPLE-PLAN
 ;;;;;;;; The following planner is a brute-force planning partial-order (POP) system.  
 ;;;;;;;; It doesn't use a heuristic, but instead just uses iterative-deepening search.  
@@ -251,13 +263,59 @@ plus a pointer to the start operator and to the goal operator."
 ;;;;;; want to read up on CONSes of the form (a . b) which I use a lot,
 ;;;;;; and also ASSOCIATION LISTS which are very convenient in certain spots
 
+;;(defun reachable (assoc-list from to)
+
 
 (defun before-p (operator1 operator2 plan)
   "Operator1 is ordered before operator2 in plan?"
+	(dprint "is reachable?")
+	(dprint operator1)
+	(dprint operator2)
+	(dprint (plan-orderings plan))
+	(dprint (reachable (plan-orderings plan) (operator-name operator1) (operator-name operator2))) 
 ;;; perhaps you have an existing function which could help here.
 )
-
-
+(defun test-before-p ()
+	(let ((plan '()) (start '()) (goal '()) (a '()) (b '()))
+		(setf start 
+			(make-operator
+				:name 'start ;;named will be used n assoc lists
+				:uniq (gensym) ;;differentiate two operators of same name i think
+				:preconditions nil
+				:effects '((t i-am-crazy) (nil i-am-frodo-baggins) (nil i-have-a-phd) (nil this-assignment-is-done) (t i-like-video-games))))
+		(setf goal 
+			(make-operator
+				:name 'goal
+				:uniq (gensym)
+				:preconditions '((nil i-am-crazy) (t i-am-frodo-baggins) (t i-have-a-phd) (t this-assignment-is-done) (t i-like-video-games))
+				:effects nil))
+		(setf a
+			(make-operator 
+				:name 'a
+				:uniq (gensym)
+				:preconditions '((nil i-have-a-phd) (nil i-am-frodo-baggins))
+				:effects '((t i-am-frodo-baggins) (nil i-am-crazy))))
+		(setf b 
+			(make-operator 
+				:name 'b
+				:uniq (gensym)
+				:preconditions '((t i-am-frodo-baggins))
+				:effects '((t i-have-a-phd))))
+		(setf plan (make-plan
+			:operators (list start goal a b)
+			:orderings (list (cons 'start 'goal) (cons 'start 'a) (cons 'a 'b) (cons 'b 'goal))
+			:links nil
+			:start start
+			:goal goal))
+		(print "should be true")
+		(print (before-p a b plan))
+		(print "should be false")
+		(print (before-p b a plan))
+		
+		
+		
+	)
+)
 (defun link-exists-for-precondition-p (precond operator plan)
   "T if there's a link for the precond for a given operator, else nil.
 precond is a predicate."
@@ -752,3 +810,11 @@ doesn't matter really -- but NOT including a goal or start operator")
 ;;;; Here it's also complaining about copy-operator and copy-plan being
 ;;;; redefined, because the structure definition had created them and
 ;;;; I'm doing better copy functions.  That's expected.
+
+;;bench test
+(setf *debug* nil)
+
+(print "about to call bench test")
+(if *bench-test* (test-before-p))
+
+
