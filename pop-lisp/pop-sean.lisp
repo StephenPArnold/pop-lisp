@@ -134,6 +134,15 @@ it unique as far as EQUALP is concerned.  Returns the copy."
 ;;;;;;; the OPERATOR structure).  The ordering specifies
 ;;;;;;; that before-op must come before after-op.
 
+(defstruct (orderings (:print-function print-orderings))
+	"Redefining .. this seems to be missing for some reason???"
+	before after)
+
+(defun make-orderings (before after)
+	(cons before after))
+
+(defun order (before after)
+	(make-orderings before after))
 
 (defun print-ordering (p stream depth)
   "Helper function to print link in a pretty way"
@@ -434,10 +443,17 @@ are copies of the original plan."
 
 (defun promote (operator link plan)
   "Promotes an operator relative to a link.  Doesn't copy the plan."
+;; Move step C before A->B.
+	(push (order operator (link-from link))
+		(plan-orderings plan))
+	plan
 )
 
 (defun demote (operator link plan)
   "Demotes an operator relative to a link.  Doesn't copy the plan."
+;; Move step C after A->B.
+	(push (order (link-from link) operator)
+		(plan-orderings plan))
 )
 
 (defun resolve-threats (plan threats current-depth max-depth)
@@ -446,8 +462,25 @@ then recursively calls SELECT-SUBGOAL on them until one returns a
 solved plan.  Returns the solved plan, else nil if no solved plan."
 )
 
-
-
+;;(defun promote-step (threat plan)
+;;	  "Try to resolve a threat of step C to link A ->p B by promoting C."
+;;;; Move step C before A->B.
+;; (push (order (threat-step threat) (link-from (threat-link threat)))
+;;   (plan-ordering plan))
+;; plan)
+;;
+;;(defun demote-step (threat plan)
+;;    "Try to resolve a threat of step C to link A ->p B by demoting C."
+;;;; Move step C after A->B
+;; (push (order (link-to (threat-link threat)) (threat-step threat))
+;;   (plan-ordering plan))
+;; plan)
+;;
+;;
+;;; Ordering constraints
+;;;
+;;; (defstruct (ordering (:type list)) before after)
+;;; (defun order (before after) (make-ordering :before before :after after))
 
 ;;;;;;; DO-POP
 ;;;;;;; This is the high-level code.  Note it creates a goal and a start
