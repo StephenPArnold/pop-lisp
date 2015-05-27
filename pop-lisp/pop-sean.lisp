@@ -483,7 +483,7 @@ solved plan.  Returns the solved plan, else nil if no solved plan."
   "Hash table.  Will yield a list of operators which can achieve a given precondition")
 
 (defun build-operators-for-precond ()
-  "Buils the hash table"
+  "Builds the hash table"
   (setf *operators-for-precond* (make-hash-table :test #'equalp))
   (dolist (operator *operators*)
     (dolist (effect (operator-effects operator))
