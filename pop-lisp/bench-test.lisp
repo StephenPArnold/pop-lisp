@@ -117,3 +117,26 @@
 		(print (inconsistent-p plan))
 		
 	))
+
+(defun test-all-operators ()
+
+	(loop for some-op in *operators* do
+  		(loop for some-effect in (operator-effects some-op) do
+			(progn (print "these are all the opeerators that do") (print some-effect) 
+			       (print (all-operators some-effect)))))
+
+)
+
+(defun test-all-operators-time-test ()
+	(dotimes (x 1000000)
+	(if (= (random 2) 0)
+	(loop for some-op in *operators* do
+  		(loop for some-effect in (operator-effects some-op) do
+			(progn 
+			       (all-operators some-effect))))
+	(loop for some-op in *operators* do
+  		(loop for some-effect in (operator-effects some-op) do
+			(progn 
+			       (all-operators2 some-effect))))))
+
+)
