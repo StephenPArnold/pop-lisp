@@ -420,26 +420,6 @@ then recursively calls SELECT-SUBGOAL on them until one returns a
 solved plan.  Returns the solved plan, else nil if no solved plan."
 )
 
-;;(defun promote-step (threat plan)
-;;	  "Try to resolve a threat of step C to link A ->p B by promoting C."
-;;;; Move step C before A->B.
-;; (push (order (threat-step threat) (link-from (threat-link threat)))
-;;   (plan-ordering plan))
-;; plan)
-;;
-;;(defun demote-step (threat plan)
-;;    "Try to resolve a threat of step C to link A ->p B by demoting C."
-;;;; Move step C after A->B
-;; (push (order (link-to (threat-link threat)) (threat-step threat))
-;;   (plan-ordering plan))
-;; plan)
-;;
-;;
-;;; Ordering constraints
-;;;
-;;; (defstruct (ordering (:type list)) before after)
-;;; (defun order (before after) (make-ordering :before before :after after))
-
 ;;;;;;; DO-POP
 ;;;;;;; This is the high-level code.  Note it creates a goal and a start
 ;;;;;;; operator, then creates a plan with those operators and an ordering
