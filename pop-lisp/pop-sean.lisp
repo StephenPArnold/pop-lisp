@@ -1,3 +1,5 @@
+(setf *random-state* (make-random-state t))
+
 (setf *debug* t)
 (setf *bench-test* t)
 (if *bench-test* (load "bench-test.lisp"))
@@ -264,7 +266,7 @@ plus a pointer to the start operator and to the goal operator."
 ;;;;;; want to read up on CONSes of the form (a . b) which I use a lot,
 ;;;;;; and also ASSOCIATION LISTS which are very convenient in certain spots
 
-;;(defun reachable (assoc-list from to)
+;;(defun reachable (assoc-list from to))
 
 
 (defun before-p (operator1 operator2 plan)
@@ -298,6 +300,7 @@ or before the link, and it's got an effect which counters the link's effect."
 (defun pick-precond (plan)
   "Return ONE (operator . precondition) pair in the plan that has not been met yet.
 If there is no such pair, return nil"
+
 ;;; SPEED HINT.  Any precondition will work.  But this is an opportunity
 ;;; to pick a smart one.  Perhaps you might select the precondition
 ;;; which has the fewest possible operators which solve it, so it fails
@@ -311,11 +314,50 @@ effects which can achieve this precondition."
   ;; grotesquely inefficient way.  Don't do the inefficient way.
 )
 
+
+
+
+
+;;probably the version sean was looking for
 (defun all-operators (precondition)
   "Given a precondition, returns all list of ALL operator templates which have
 an effect that can achieve this precondition."
+  
+  ;;if in the hash table, return it ;; this is order log(OPERATORS*EFFECTS) time and order OPERATOR*EFFECTS space
+  (let (list-of-ops (copy-tree '()))
+  	(loop for some-op in *operators* do
+		(if (member precondition (operator-effects some-op) ) (push some-op list-of-ops)))
+	list-of-ops) 
+  ;;for all operators ;; this algorithm is order OPERATORS*EFFECTS
+	;;for all effects
+		;;does is match? return yes, add to hash table?
+  ;;return nil
+  
   ;; hint: there's short, efficient way to do this, and a long,
   ;; grotesquely inefficient way.  Don't do the inefficient way.
+  ;;^^ i'm afraid. so i'm making a hash table to make up for the potential of this being "grotesque"
+)
+;;I want to speed test this
+(defun all-operators2 (precondition)
+  "Given a precondition, returns all list of ALL operator templates which have
+an effect that can achieve this precondition."
+  
+  ;;if in the hash table, return it ;; this is order log(OPERATORS*EFFECTS) time and order OPERATOR*EFFECTS space
+  (let (list-of-ops (copy-tree '()))
+  	(loop for some-op in *operators* do
+		(block effect-loop
+  		(loop for some-effect in (operator-effects some-op) do			
+			(if (equal precondition some-effect) 
+				(progn  (push some-op list-of-ops) (return-from effect-loop nil))))))
+	list-of-ops) 
+  ;;for all operators ;; this algorithm is order OPERATORS*EFFECTS
+	;;for all effects
+		;;does is match? return yes, add to hash table?
+  ;;return nil
+  
+  ;; hint: there's short, efficient way to do this, and a long,
+  ;; grotesquely inefficient way.  Don't do the inefficient way.
+  ;;^^ i'm afraid. so i'm making a hash table to make up for the potential of this being "grotesque"
 )
 
 (defun select-subgoal (plan current-depth max-depth)
@@ -779,4 +821,12 @@ doesn't matter really -- but NOT including a goal or start operator")
 (print "about to call bench test")
 (if *bench-test* (test-before-p))
 (test-inconsistent-p)
+(test-all-operators)
+(require :sb-sprof)
+
+
+     (sb-sprof:with-profiling (:max-samples 1000000
+                               :mode :alloc
+                               :report :flat)
+       (test-all-operators-time-test))
 
