@@ -301,9 +301,27 @@ precond is a predicate."
 (defun operator-threatens-link-p (operator link plan)
   "T if operator threatens link in plan, because it's not ordered after
 or before the link, and it's got an effect which counters the link's effect."
+	(let ((not-link (cons (not  (link-precond link)) (rest (link-precond link)) ))) 
+		(loop for effect in (operator-effects operator) do
+			(if (equal effect not-link)
+				(if (or 
+					(reachable (plan-orderings plan) (operator-name operator) (operator-name (link-from link)))
+					(reachable (plan-orderings plan) (operator-name (link-to link)) (operator-name operator)))
+					(return-from operator-threatens-link-p nil) ;; if it's reachable, not a threat
+					(return-from operator-threatens-link-p t) ;;else it is
+				)
+			)
+		))
+	(return-from operator-threatens-link-p nil)
+	
+	;;does it counter the link's effect?
+		;;if so,is the operator before or after the link ;; two reachable calls 
+			;;if so 
+				;;return-from operator-threatens-link-p nil
+	;;return-from operator-threatens-link-p t
+
 ;;; SPEED HINT.  Test the easy tests before the more costly ones.
 )
-
 (defun inconsistent-p (plan)
   "Plan orderings are inconsistent"
   ;; hint: cyclic-assoc-list
@@ -313,20 +331,37 @@ or before the link, and it's got an effect which counters the link's effect."
 (defun pick-precond (plan)
   "Return ONE (operator . precondition) pair in the plan that has not been met yet.
 If there is no such pair, return nil"
-
-;;; SPEED HINT.  Any precondition will work.  But this is an opportunity
-;;; to pick a smart one.  Perhaps you might select the precondition
-;;; which has the fewest possible operators which solve it, so it fails
-;;; the fastest if it's wrong. 
+	;;;need to find a precondition we don't have a link for already
+	;;;looks like he's suggesting we should use the functio link-exsists-for-precondition
+		
+	;;for each operator in the plan
+	;;look at the preconditions
+	;;if there's not a link for it, return.
+	;;; SPEED HINT.  Any precondition will work.  But this is an opportunity
+	;;; to pick a smart one.  Perhaps you might select the precondition
+	;;; which has the fewest possible operators which solve it, so it fails
+	;;; the fastest if it's wrong. 
 )
 
+(defun same-op-name (op-1 op-2)
+	(equal (operator-name op-1) (operator-name op-2))
+)
 (defun all-effects (precondition plan)
   "Given a precondition, returns a list of ALL operators presently IN THE PLAN which have
 effects which can achieve this precondition."
   ;; hint: there's short, efficient way to do this, and a long,
   ;; grotesquely inefficient way.  Don't do the inefficient way.
+  (let ((intersection '()) (operators-in-plan (plan-operators plan)) (potential-operators (all-operators precondition)))
+  	(loop for some-op in operators-in-plan do
+		(if (equal (operator-name some-op) 'start) 
+			(loop for some-effect in (operator-effects some-op) do 
+				(if (equal some-effect precondition) (push some-op intersection))
+			)
+		) 
+		(if (member some-op potential-operators :test #'same-op-name) (push some-op intersection) ())
+	)
+  intersection)
 )
-
 
 
 
@@ -335,18 +370,8 @@ effects which can achieve this precondition."
 (defun all-operators (precondition)
   "Given a precondition, returns a list of ALL operator templates which have
 an effect that can achieve this precondition."
-  
-  ;;if in the hash table, return it ;; this is order log(OPERATORS*EFFECTS) time and order OPERATOR*EFFECTS space
-  (let (list-of-ops (copy-tree '()))
-  	(loop for some-op in *operators* do
-		(if (member precondition (operator-effects some-op) ) (push some-op list-of-ops)))
-	list-of-ops) 
-  ;;for all operators ;; this algorithm is order OPERATORS*EFFECTS
-	;;for all effects
-		;;does is match? return yes, add to hash table?
-  ;;return nil
-  
-  ;; hint: there's short, efficient way to do this, and a long,
+  (gethash precondition *operators-for-precond*)
+   ;; hint: there's short, efficient way to do this, and a long,
   ;; grotesquely inefficient way.  Don't do the inefficient way.
   ;;^^ i'm afraid. so i'm making a hash table to make up for the potential of this being "grotesque"
 )
@@ -477,7 +502,7 @@ are copies of the original plan."
 (defun resolve-threats (plan threats current-depth max-depth)
   "Tries all combinations of solutions to all the threats in the plan,
 then recursively calls SELECT-SUBGOAL on them until one returns a
-solved plan.  Returns the solved plan, else nil if no solved plan."
+solved plan.  Returns the solved plan, else nil if no solved plan. DAVID:NIL= FAIL?"
 )
 
 ;;;;;;; DO-POP
@@ -508,7 +533,6 @@ solved plan.  Returns the solved plan, else nil if no solved plan."
     (dolist (effect (operator-effects operator))
 			(print effect)
       (push operator (gethash effect *operators-for-precond*)))))
-
 
 (defun do-pop ()
   (let* ((start (make-operator
@@ -862,9 +886,12 @@ doesn't matter really -- but NOT including a goal or start operator")
 (setf *debug* nil)
 (require :sb-sprof)
 
-
+(build-operators-for-precond)
      (sb-sprof:with-profiling (:max-samples 1000000
                                :mode :alloc
                                :report :flat)
        (test-all-operators-time-test))
+(test-all-effects)
+(print " done testing effectgs:?")
 
+(operator-threatens-link-p-test)
