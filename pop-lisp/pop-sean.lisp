@@ -474,8 +474,8 @@ This function should assume that if MAYBE-THREATENING-OPERATOR is NIL, then no
 operator was added and we don't have to check for its threats.  However, we must
 always check for any operators which threaten MAYBE-THREATENED-LINK."
   (let ((threats nil)
-	(new-oper maybe-threatening-operator)
-	(new-link maybe-threatened-link))
+		(new-oper maybe-threatening-operator)
+		(new-link maybe-threatened-link))
 ;; Threat possibility: new step versus existing link.
   	(print "before do-list")
 	(print (plan-links plan))	
@@ -486,10 +486,10 @@ always check for any operators which threaten MAYBE-THREATENED-LINK."
      		(push (cons new-oper link) threats)))
 	(print "after do list")
 ;; Threat possibility: new link versus existing operator.
-  	(dolist (operator (plan-operators plan))
-    	(when (operator-threatens-link-p operator new-link plan)
-				(push (cons operator new-link) threats)))
-  threats)
+  		(dolist (operator (plan-operators plan))
+    		(when (operator-threatens-link-p operator new-link plan)
+					(push (cons operator new-link) threats)))
+  	threats)
 )
 
 
@@ -547,11 +547,17 @@ are copies of the original plan."
 )
 
 (defun resolve-threats (plan threats current-depth max-depth)
+;;; 1) Doesn't currently use current-depth or max-depth -- probably needs to "abort"
+;;; current-depth > max-depth ... would that just give a "FAIL"?
+;;; 2) Also doesn't "SELECT-SUBGOAL" ... and has an undeclared "resolve-threat" - single.
+;;; 
   "Tries all combinations of solutions to all the threats in the plan,
 then recursively calls SELECT-SUBGOAL on them until one returns a
 solved plan.  Returns the solved plan, else nil if no solved plan. DAVID:NIL= FAIL?"
-		
-
+	(if (null threats)
+		(list plan)
+		(loop for new-plan in (resolve-threat (first threats) plan)
+			append (resolve-threats (rest threats) new-plan)))
 )
 
 ;;;;;;; DO-POP
