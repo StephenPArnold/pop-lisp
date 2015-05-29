@@ -295,7 +295,11 @@ plus a pointer to the start operator and to the goal operator."
 (defun link-exists-for-precondition-p (precond operator plan)
   "T if there's a link for the precond for a given operator, else nil.
 precond is a predicate."
-)
+	(loop for link in (plan-links plan) do
+		(if (and (equal (operator-uniq (link-to link)) (operator-uniq operator)) (equal (link-precond link) precond) )
+			(return-from link-exists-for-precondition-p t)
+			nil))
+	nil)
 
 
 (defun operator-threatens-link-p (operator link plan)
@@ -336,7 +340,15 @@ or before the link, and it's got an effect which counters the link's effect."
 If there is no such pair, return nil"
 	;;;need to find a precondition we don't have a link for already
 	;;;looks like he's suggesting we should use the functio link-exsists-for-precondition
-		
+	;;link-exists-for-precondition-p (precond operator plan)
+	(loop for operator in (plan-operators plan) do
+		(loop for precondition (operator-preconditions operator)
+			(if (link-exist-for-precondition-p precondition operator plan))
+				nil
+				(return-from pick-precond (cons operator precondition))
+		) 
+	)
+	nil
 	;;for each operator in the plan
 	;;look at the preconditions
 	;;if there's not a link for it, return.
@@ -404,7 +416,8 @@ an effect that can achieve this precondition."
 (defun select-subgoal (plan current-depth max-depth)
   "For all possible subgoals, recursively calls choose-operator
 on those subgoals.  Returns a solved plan, else nil if not solved."
-  	  ;;; an enterprising student noted that the book says you DON'T have
+  	   
+	  ;;; an enterprising student noted that the book says you DON'T have
 	  ;;; to nondeterministically choose from among all preconditions --
 	  ;;; you just pick one arbitrarily and that's all.  Note that the
 	  ;;; algorithm says "pick a plan step...", rather than "CHOOSE a
