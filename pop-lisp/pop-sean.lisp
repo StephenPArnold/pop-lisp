@@ -458,8 +458,8 @@ This function should assume that if MAYBE-THREATENING-OPERATOR is NIL, then no
 operator was added and we don't have to check for its threats.  However, we must
 always check for any operators which threaten MAYBE-THREATENED-LINK."
   (let ((threats nil)
-				(new-oper maybe-threatening-operator)
-				(new-link maybe-threatened-link))
+	(new-oper maybe-threatening-operator)
+	(new-link maybe-threatened-link))
 ;; Threat possibility: new step versus existing link.
   	(dolist (link (plan-links plan))
     	(awhen (operator-threatens-link-p new-oper link plan)
@@ -895,3 +895,4 @@ doesn't matter really -- but NOT including a goal or start operator")
 (print " done testing effectgs:?")
 
 (operator-threatens-link-p-test)
+(threats-test)
