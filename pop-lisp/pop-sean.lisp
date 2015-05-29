@@ -541,6 +541,21 @@ are copies of the original plan."
 		(plan-orderings plan))
 )
 
+(defun threat-resolution-means (plan)
+  (declare (ignore plan))
+    (list 'promote-step
+          'demote-step))
+
+(defun resolve-threat (threat plan)
+	"Try to resolve a threat using whatever means are available.
+Threat is [operator.link]
+Return a list of candidate plans."
+	(loop for method in (threat-resolution-means plan)
+		for new-plan* = (funcall method (car threat) (cdr threat) (copy-plan plan))
+		if (listp new-plan*)
+			append new-plan*
+		else collect new-plan*))
+
 (defun resolve-threats (plan threats current-depth max-depth)
 ;;; 1) Doesn't currently use current-depth or max-depth -- probably needs to "abort"
 ;;; current-depth > max-depth ... would that just give a "FAIL"?
@@ -549,10 +564,14 @@ are copies of the original plan."
   "Tries all combinations of solutions to all the threats in the plan,
 then recursively calls SELECT-SUBGOAL on them until one returns a
 solved plan.  Returns the solved plan, else nil if no solved plan. DAVID:NIL= FAIL?"
-	(if (null threats)
+	(if (null threats) ;; threats = [operator.link]
 		(list plan)
-		(loop for new-plan in (resolve-threat (first threats) plan)
-			append (resolve-threats (rest threats) new-plan)))
+		(if (<= current-depth max-depth)
+			(loop for new-plan in (resolve-threat (first threats) plan)
+				(append (resolve-threats (rest threats) new-plan)))
+			(throw 'choose 1337)
+		)
+	)
 )
 
 ;;;;;;; DO-POP
