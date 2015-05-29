@@ -432,12 +432,19 @@ doesn't work, recursively call add operators and call hook-up-operators
 on them.  Returns a solved plan, else nil if not solved."
 )
 
+
 (defun add-operator (operator plan)
   "Given an OPERATOR and a PLAN makes a copy of the plan [the
 operator should have already been copied out of its template at this point].
 Then adds that copied operator
 the copied plan, and hooks up the orderings so that the new operator is
 after start and before goal.  Returns the modified copy of the plan."
+  (let ((new-plan (copy-plan plan) ))
+  	(push operator (plan-operators new-plan))
+	(push (cons (plan-start new-plan) operator) (plan-orderings new-plan))
+	(push (cons operator (plan-goal new-plan)) (plan-orderings new-plan))
+	new-plan
+  )
   ;;; hint: make sure you copy the plan!
   ;;; also hint: use PUSHNEW to add stuff but not duplicates
   ;;; Don't use PUSHNEW everywhere instead of PUSH, just where it
@@ -452,12 +459,23 @@ TO for the given PRECONDITION that FROM achieves for TO.  Then
 recursively  calls resolve-threats to fix any problems.  Presumes that
 PLAN is a copy that can be modified at will by HOOK-UP-OPERATOR. Returns a solved
 plan, else nil if not solved."
+  
+  (let ((new-plan (if new-oprator-was-added
+			(add-operator from plan)
+			(copy-plan plan)))
+	(new-link (make-link :from from :to to :precond precondition)))
+
+  	(push new-link (plan-links new-plan))
+	;;(plan threats current-depth max-depth)	
+	(resolve-threats new-plan (threats new-plan (if new-operator-was-added from nil) new-link) current-depth max-depth) 
+  )
   ;;; hint: want to go fast?  The first thing you should do is
   ;;; test to see if TO is already ordered before FROM and thus
   ;;; hooking them up would make the plan inconsistent from the get-go
   ;;; also hint: use PUSHNEW to add stuff but not duplicates  
   ;;; Don't use PUSHNEW everywhere instead of PUSH, just where it
   ;;; makes specific sense.
+
 )
 
 (defun threats (plan maybe-threatening-operator maybe-threatened-link)
