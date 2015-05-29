@@ -12,11 +12,6 @@ to be printed while debug=t."
       (print some-variable))
     some-variable))
 
-(defmacro awhen (test &body body)
-	  "Anaphoric when: bind IT to the value of test."
-		  `(let ((IT ,test))
-				      (when IT ,@body)))
-
 ;;;;;;;; SIMPLE-PLAN
 ;;;;;;;; The following planner is a brute-force planning partial-order (POP) system.  
 ;;;;;;;; It doesn't use a heuristic, but instead just uses iterative-deepening search.  
