@@ -411,7 +411,9 @@ an effect that can achieve this precondition."
 (defun select-subgoal (plan current-depth max-depth)
   "For all possible subgoals, recursively calls choose-operator
 on those subgoals.  Returns a solved plan, else nil if not solved."
-  	   
+  	  (let ((my-precond (pick-precond plan)))	   
+	  	(choose-operator my-precond current-depth max-depth))
+	  
 	  ;;; an enterprising student noted that the book says you DON'T have
 	  ;;; to nondeterministically choose from among all preconditions --
 	  ;;; you just pick one arbitrarily and that's all.  Note that the
@@ -425,6 +427,8 @@ on those subgoals.  Returns a solved plan, else nil if not solved."
 hook-up-operator for all possible operators in the plan.  If that
 doesn't work, recursively call add operators and call hook-up-operators
 on them.  Returns a solved plan, else nil if not solved."
+	;;for all effects
+		;;
 )
 
 
