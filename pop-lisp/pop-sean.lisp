@@ -301,18 +301,22 @@ precond is a predicate."
 (defun operator-threatens-link-p (operator link plan)
   "T if operator threatens link in plan, because it's not ordered after
 or before the link, and it's got an effect which counters the link's effect."
+	(print "does")
+	(print (operator-name operator))
+	(print "threaten")
+	(print link)
 	(let ((not-link (cons (not  (link-precond link)) (rest (link-precond link)) ))) 
 		(loop for effect in (operator-effects operator) do
 			(if (equal effect not-link)
 				(if (or 
 					(reachable (plan-orderings plan) (operator-name operator) (operator-name (link-from link)))
 					(reachable (plan-orderings plan) (operator-name (link-to link)) (operator-name operator)))
-					(return-from operator-threatens-link-p nil) ;; if it's reachable, not a threat
-					(return-from operator-threatens-link-p t) ;;else it is
+						(return-from operator-threatens-link-p (print nil) ) ;; if it's reachable, not a threat
+						(return-from operator-threatens-link-p (print t)) ;;else it is
 				)
 			)
 		))
-	(return-from operator-threatens-link-p nil)
+	(return-from operator-threatens-link-p (print nil))
 	
 	;;does it counter the link's effect?
 		;;if so,is the operator before or after the link ;; two reachable calls 
@@ -326,7 +330,6 @@ or before the link, and it's got an effect which counters the link's effect."
   "Plan orderings are inconsistent"
   ;; hint: cyclic-assoc-list
   (cyclic-assoc-list (plan-orderings plan))
-;
 )
 (defun pick-precond (plan)
   "Return ONE (operator . precondition) pair in the plan that has not been met yet.
@@ -461,9 +464,14 @@ always check for any operators which threaten MAYBE-THREATENED-LINK."
 		(new-oper maybe-threatening-operator)
 		(new-link maybe-threatened-link))
 ;; Threat possibility: new step versus existing link.
-  		(dolist (link (plan-links plan))
-    		(when (operator-threatens-link-p new-oper link plan)
-     			(push (cons new-oper link) threats)))
+  	(print "before do-list")
+	(print (plan-links plan))	
+	(dolist (link (plan-links plan))
+    	(print "testing the link")
+	(print link)	
+	(when (operator-threatens-link-p new-oper link plan)
+     		(push (cons new-oper link) threats)))
+	(print "after do list")
 ;; Threat possibility: new link versus existing operator.
   		(dolist (operator (plan-operators plan))
     		(when (operator-threatens-link-p operator new-link plan)
@@ -478,6 +486,32 @@ always check for any operators which threaten MAYBE-THREATENED-LINK."
   "Returns plans for each combination of promotions and demotions
 of the given threats, except  for the inconsistent plans.  These plans
 are copies of the original plan."
+  (dprint "given plan is ")
+  (dprint plan)
+  (let ((plan-list (copy-tree '())))
+  	(loop for threat-plan in (binary-combinations (length threats)) do
+		(print threat-plan)
+		(block outer-loop
+			(let ((new-plan (copy-plan plan)))
+				(dprint "new plan before dotimes")
+				(dprint new-plan)
+				(dotimes (x (length threat-plan))
+					(let ((threat (nth x threats)))
+						(dprint "new plan before if")
+						(dprint new-plan)
+						(if (nth x threat-plan)
+							(promote (car threat) (cdr threat) new-plan)
+							(demote (car threat) (cdr threat) new-plan))
+						(if (reachable (plan-orderings new-plan) (car threat) (car threat))
+							(return-from outer-loop nil)
+							nil)
+					)
+				)
+				(push new-plan plan-list)
+			))
+	)
+	plan-list
+  )
   ;;; Hint: binary-combinations could be useful to you.
   ;;; Also check out MAPC
   ;;; SPEED HINT.  You might handle the one-threat case specially.
@@ -495,7 +529,7 @@ are copies of the original plan."
 (defun demote (operator link plan)
   "Demotes an operator relative to a link.  Doesn't copy the plan."
 ;; Move step C after A->B.
-	(push (order (link-from link) operator)
+	(push (order (link-to link) operator)
 		(plan-orderings plan))
 )
 
@@ -890,13 +924,14 @@ doesn't matter really -- but NOT including a goal or start operator")
 (setf *debug* nil)
 (require :sb-sprof)
 
-(build-operators-for-precond)
-     (sb-sprof:with-profiling (:max-samples 1000000
-                               :mode :alloc
-                               :report :flat)
-       (test-all-operators-time-test))
-(test-all-effects)
+;;(build-operators-for-precond)
+;;     (sb-sprof:with-profiling (:max-samples 1000000
+;;                               :mode :alloc
+;;                               :report :flat)
+;;       (test-all-operators-time-test))
+;;(test-all-effects)
 (print " done testing effectgs:?")
 
-(operator-threatens-link-p-test)
-(threats-test)
+;;(operator-threatens-link-p-test)
+;;(threats-test)
+(all-promotion-demotion-plans-test)
