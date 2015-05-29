@@ -462,12 +462,12 @@ always check for any operators which threaten MAYBE-THREATENED-LINK."
 	(new-link maybe-threatened-link))
 ;; Threat possibility: new step versus existing link.
   	(dolist (link (plan-links plan))
-    	(awhen (operator-threatens-link-p new-oper link plan)
-     		(push it threats)))
+    	(when (operator-threatens-link-p new-oper link plan)
+     		(push (cons new-oper link) threats)))
 ;; Threat possibility: new link versus existing operator.
   	(dolist (operator (plan-operators plan))
-    	(awhen (operator-threatens-link-p operator new-link plan)
-				(push it threats)))
+    	(when (operator-threatens-link-p operator new-link plan)
+				(push (cons operator new-link) threats)))
   threats)
 )
 
