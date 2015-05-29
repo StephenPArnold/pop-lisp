@@ -534,6 +534,10 @@ are copies of the original plan."
 )
 
 (defun resolve-threats (plan threats current-depth max-depth)
+;;; 1) Doesn't currently use current-depth or max-depth -- probably needs to "abort"
+;;; current-depth > max-depth ... would that just give a "FAIL"?
+;;; 2) Also doesn't "SELECT-SUBGOAL" ... and has an undeclared "resolve-threat" - single.
+;;; 
   "Tries all combinations of solutions to all the threats in the plan,
 then recursively calls SELECT-SUBGOAL on them until one returns a
 solved plan.  Returns the solved plan, else nil if no solved plan. DAVID:NIL= FAIL?"
