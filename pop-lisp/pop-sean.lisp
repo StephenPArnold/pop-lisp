@@ -338,10 +338,10 @@ If there is no such pair, return nil"
 	;;link-exists-for-precondition-p (precond operator plan)
 	(loop for operator in (plan-operators plan) do
 		(loop for precondition (operator-preconditions operator)
-			(if (link-exist-for-precondition-p precondition operator plan))
+			(if (link-exist-for-precondition-p precondition operator plan)
 				nil
-				(return-from pick-precond (cons operator precondition))
-		) 
+				(return-from pick-precond (cons operator precondition)))
+		)
 	)
 	nil
 	;;for each operator in the plan
