@@ -560,9 +560,9 @@ are copies of the original plan."
 )
 
 (defun resolve-threats (plan threats current-depth max-depth)
-;;; 1) Doesn't currently use current-depth or max-depth -- probably needs to "abort"
+;;; 1. Doesn't currently use current-depth or max-depth -- probably needs to "abort"
 ;;; current-depth > max-depth ... would that just give a "FAIL"?
-;;; 2) Also doesn't "SELECT-SUBGOAL" ... and has an undeclared "resolve-threat" - single.
+;;; 2. Also doesn't "SELECT-SUBGOAL" ... and has an undeclared "resolve-threat" - single.
 ;;; 
   "Tries all combinations of solutions to all the threats in the plan,
 then recursively calls SELECT-SUBGOAL on them until one returns a
@@ -951,8 +951,8 @@ doesn't matter really -- but NOT including a goal or start operator")
 ;;(maphash #'(lambda (k v)
 ;;						 (format t "~A = ~A~%" k v))
 ;;			 *operators-for-precond*)
-(setf *debug* nil)
-(require :sb-sprof)
+;;(setf *debug* nil)
+;;(require :sb-sprof)
 
 ;;(build-operators-for-precond)
 ;;     (sb-sprof:with-profiling (:max-samples 1000000
