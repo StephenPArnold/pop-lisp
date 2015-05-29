@@ -12,6 +12,10 @@ to be printed while debug=t."
       (print some-variable))
     some-variable))
 
+(defmacro awhen (test &body body)
+	  "Anaphoric when: bind IT to the value of test."
+		  `(let ((IT ,test))
+				      (when IT ,@body)))
 
 ;;;;;;;; SIMPLE-PLAN
 ;;;;;;;; The following planner is a brute-force planning partial-order (POP) system.  
@@ -329,7 +333,7 @@ effects which can achieve this precondition."
 
 ;;probably the version sean was looking for
 (defun all-operators (precondition)
-  "Given a precondition, returns all list of ALL operator templates which have
+  "Given a precondition, returns a list of ALL operator templates which have
 an effect that can achieve this precondition."
   
   ;;if in the hash table, return it ;; this is order log(OPERATORS*EFFECTS) time and order OPERATOR*EFFECTS space
@@ -428,7 +432,21 @@ situations you need to check are the ones described in the previous paragraph.
 This function should assume that if MAYBE-THREATENING-OPERATOR is NIL, then no
 operator was added and we don't have to check for its threats.  However, we must
 always check for any operators which threaten MAYBE-THREATENED-LINK."
+  (let ((threats nil)
+				(new-oper maybe-threatening-operator)
+				(new-link maybe-threatened-link))
+;; Threat possibility: new step versus existing link.
+  	(dolist (link (plan-links plan))
+    	(awhen (operator-threatens-link-p new-oper link plan)
+     		(push it threats)))
+;; Threat possibility: new link versus existing operator.
+  	(dolist (operator (plan-operators plan))
+    	(awhen (operator-threatens-link-p operator new-link plan)
+				(push it threats)))
+  threats)
 )
+
+
 
 
 (defun all-promotion-demotion-plans (plan threats)
@@ -486,7 +504,9 @@ solved plan.  Returns the solved plan, else nil if no solved plan."
   "Builds the hash table"
   (setf *operators-for-precond* (make-hash-table :test #'equalp))
   (dolist (operator *operators*)
+		(print operator)
     (dolist (effect (operator-effects operator))
+			(print effect)
       (push operator (gethash effect *operators-for-precond*)))))
 
 
@@ -510,12 +530,12 @@ solved plan.  Returns the solved plan, else nil if no solved plan."
 	 (depth *depth-increment*)
 	 solution)
     (build-operators-for-precond)
-    ;; Do iterative deepening search on this sucker
-    (loop
-     (format t "~%Search Depth: ~d" depth)
-     (setf solution (select-subgoal plan 0 depth))
-     (when solution (return)) ;; break from loop, we're done!
-     (incf depth *depth-increment*))
+;; Do iterative deepening search on this sucker
+;;    (loop
+;;     (format t "~%Search Depth: ~d" depth)
+;;     (setf solution (select-subgoal plan 0 depth))
+;;     (when solution (return)) ;; break from loop, we're done!
+;;     (incf depth *depth-increment*))
     ;; found the answer if we got here
     (format t "~%Solution Discovered:~%~%")
     solution))
@@ -835,6 +855,11 @@ doesn't matter really -- but NOT including a goal or start operator")
 (if *bench-test* (test-before-p))
 (test-inconsistent-p)
 (test-all-operators)
+(setf *debug* t)
+;;(maphash #'(lambda (k v)
+;;						 (format t "~A = ~A~%" k v))
+;;			 *operators-for-precond*)
+(setf *debug* nil)
 (require :sb-sprof)
 
 
