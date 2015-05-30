@@ -1,6 +1,4 @@
-(setf *random-state* (make-random-state t))
-
-(setf *debug* t)
+(setf *debug* nil)
 (setf *bench-test* t)
 (if *bench-test* (load "bench-test.lisp"))
 (defun dprint (some-variable &optional (additional-message '()))
@@ -74,7 +72,6 @@ to be printed while debug=t."
   "Negates a predicate.  Pretty simple!"
   (cons (not (first predicate)) (rest predicate)))
 
-
 ;;;;;; STRIPS OPERATORS
 ;;;;;; A strips operator has is described below.  Note that
 ;;;;;; UNIQ allows two operators with the same name, preconds
@@ -92,7 +89,6 @@ which is different from an instantiated operator actually in a plan.
 Use instantiate-operator to create an operator from a template."
   name uniq preconditions effects)
 
-
 ;; Expect a possible warning here about redefinition
 (defun copy-operator (operator)
   "Copies the operator and assigns it a new unique gensym symbol to make
@@ -104,16 +100,14 @@ it unique as far as EQUALP is concerned.  Returns the copy."
     op))
 
 
-
 ;;;;;;; LINKS
 ;;;;;;; A link is a structure that specifies a causal link with a from-operator,
 ;;;;;;; a to-operator, and precondition of the to-operator involved
 ;;;;;;; (which is the SAME as the effect of the from-operator!)
 
-(defstruct (link
-	    (:print-function print-link))
+(defstruct (link (:print-function print-link))
   "FROM and TO are operators in the plan.
-  PRECOND is the predicate that FROM's effect makes true in TO's precondition."
+PRECOND is the predicate that FROM's effect makes true in TO's precondition."
   from precond to)
 
 (defun print-link (p stream depth)
@@ -184,8 +178,6 @@ plus a pointer to the start operator and to the goal operator."
     p))
 
 
-
-
 ;;;;;;;;; UTILITY FUNCTIONS
 ;;;;;;;;; I predict you will find these functions useful.
 
@@ -210,7 +202,6 @@ plus a pointer to the start operator and to the goal operator."
 	       (or (equalp (cdr x) to)
 		   (reachable (remove x assoc-list) (cdr x) to)))
       (return t))))
-
 
 ;;;; Cyclic-assoc-list takes an association list and determines if it
 ;;;; contains a cycle (two objects can reach each other)
@@ -250,7 +241,6 @@ plus a pointer to the start operator and to the goal operator."
 	(setf bag bag2)))))
 
 
-
 ;;;;;; PLANNING CODE TEMPLATES
 ;;;;;;
 ;;;;;; The following are the functions I used to implement my planner.
@@ -274,8 +264,6 @@ plus a pointer to the start operator and to the goal operator."
 ;;;;;; want to read up on CONSes of the form (a . b) which I use a lot,
 ;;;;;; and also ASSOCIATION LISTS which are very convenient in certain spots
 
-;;(defun reachable (assoc-list from to))
-
 
 (defun before-p (operator1 operator2 plan)
   "Operator1 is ordered before operator2 in plan?"
@@ -295,7 +283,6 @@ precond is a predicate."
 			(return-from link-exists-for-precondition-p t)
 			nil))
 	nil)
-
 
 (defun operator-threatens-link-p (operator link plan)
   "T if operator threatens link in plan, because it's not ordered after
@@ -321,20 +308,15 @@ or before the link, and it's got an effect which counters the link's effect."
 			)
 		))
 	(return-from operator-threatens-link-p (dprint nil))
-	
-	;;does it counter the link's effect?
-		;;if so,is the operator before or after the link ;; two reachable calls 
-			;;if so 
-				;;return-from operator-threatens-link-p nil
-	;;return-from operator-threatens-link-p t
-
 ;;; SPEED HINT.  Test the easy tests before the more costly ones.
 )
+
 (defun inconsistent-p (plan)
   "Plan orderings are inconsistent"
   ;; hint: cyclic-assoc-list
   (cyclic-assoc-list (plan-orderings plan))
 )
+
 (defun pick-precond (plan)
   "Return ONE (operator . precondition) pair in the plan that has not been met yet.
 If there is no such pair, return nil"
@@ -349,9 +331,6 @@ If there is no such pair, return nil"
 		)
 	)
 	nil
-	;;for each operator in the plan
-	;;look at the preconditions
-	;;if there's not a link for it, return.
 	;;; SPEED HINT.  Any precondition will work.  But this is an opportunity
 	;;; to pick a smart one.  Perhaps you might select the precondition
 	;;; which has the fewest possible operators which solve it, so it fails
@@ -361,6 +340,7 @@ If there is no such pair, return nil"
 (defun same-op-name (op-1 op-2)
 	(equal (operator-name op-1) (operator-name op-2))
 )
+
 (defun all-effects (precondition plan)
   "Given a precondition, returns a list of ALL operators presently IN THE PLAN which have
 effects which can achieve this precondition."
@@ -383,10 +363,6 @@ effects which can achieve this precondition."
   intersection)
 )
 
-
-
-
-;;probably the version sean was looking for
 (defun all-operators (precondition)
   "Given a precondition, returns a list of ALL operator templates which have
 an effect that can achieve this precondition."
@@ -396,9 +372,8 @@ an effect that can achieve this precondition."
  (dprint (gethash precondition *operators-for-precond*))
    ;; hint: there's short, efficient way to do this, and a long,
   ;; grotesquely inefficient way.  Don't do the inefficient way.
-  ;;^^ i'm afraid. so i'm making a hash table to make up for the potential of this being "grotesque"
 )
-;;I want to speed test this
+
 (defun all-operators2 (precondition)
   "Given a precondition, returns all list of ALL operator templates which have
 an effect that can achieve this precondition."
@@ -418,9 +393,7 @@ an effect that can achieve this precondition."
   
   ;; hint: there's short, efficient way to do this, and a long,
   ;; grotesquely inefficient way.  Don't do the inefficient way.
-  ;;^^ i'm afraid. so i'm making a hash table to make up for the potential of this being "grotesque"
 )
-
 
 (defun select-subgoal (plan current-depth max-depth)
 	
@@ -445,7 +418,6 @@ an effect that can achieve this precondition."
 	  ;;; algorithm says "pick a plan step...", rather than "CHOOSE a
 	  ;;; plan step....".  This makes the algorithm much faster.  
 )
-
 
 (defun choose-operator (op-precond-pair plan current-depth max-depth)
   "For a given (operator . precondition) pair, recursively call
@@ -487,7 +459,6 @@ on them.  Returns a solved plan, else nil if not solved."
 	nil
 )
 
-
 (defun add-operator (operator plan)
   "Given an OPERATOR and a PLAN makes a copy of the plan [the
 operator should have already been copied out of its template at this point].
@@ -519,20 +490,19 @@ plan, else nil if not solved."
   (let ((new-plan (if new-operator-was-added
 			(add-operator from plan)
 			(copy-plan plan)))
-	(new-link (make-link :from from :to to :precond precondition)))
-	(pushnew (cons from to) (plan-orderings new-plan) :test #'equal)
-	(incf current-depth)
-	(dprint new-plan)
-	(if (> (plan-num-preconditions plan)  max-depth) (progn (dprint "HEY RAN OUT OF LINKS") (dprint (length (plan-links plan)))  (return-from hook-up-operator nil)))
+		(new-link (make-link :from from :to to :precond precondition)))
+		(pushnew (cons from to) (plan-orderings new-plan) :test #'equal)
+		(incf current-depth)
+		(dprint new-plan)
+		(if (> (plan-num-preconditions plan)  max-depth) (progn (dprint "HEY RAN OUT OF LINKS") (dprint (length (plan-links plan)))  (return-from hook-up-operator nil)))
   	(push new-link (plan-links new-plan))
-	;;(plan threats current-depth max-depth)	
-	(let ((resolved-plan (resolve-threats new-plan (threats new-plan (if new-operator-was-added from nil) new-link) current-depth max-depth)))
-		(if resolved-plan
-			(progn (dprint "end hookup1") (dprint (return-from hook-up-operator resolved-plan) "plan from hook-up operator"))
-			(progn (dprint "nil from hook-up")	nil)
-		)	
-	) 
-  	
+		;;(plan threats current-depth max-depth)	
+		(let ((resolved-plan (resolve-threats new-plan (threats new-plan (if new-operator-was-added from nil) new-link) current-depth max-depth)))
+			(if resolved-plan
+				(progn (dprint "end hookup1") (dprint (return-from hook-up-operator resolved-plan) "plan from hook-up operator"))
+				(progn (dprint "nil from hook-up")	nil)
+			)	
+		) 
   )
   (dprint "nill from hookup 2")
   nil
@@ -542,7 +512,6 @@ plan, else nil if not solved."
   ;;; also hint: use PUSHNEW to add stuff but not duplicates  
   ;;; Don't use PUSHNEW everywhere instead of PUSH, just where it
   ;;; makes specific sense.
-
 )
 
 (defun threats (plan maybe-threatening-operator maybe-threatened-link)
@@ -586,8 +555,20 @@ always check for any operators which threaten MAYBE-THREATENED-LINK."
   	threats)
 )
 
+(defun promote (operator link plan)
+  "Promotes an operator relative to a link.  Doesn't copy the plan."
+;; Move step C before A->B.
+	(push (order operator (link-from link))
+		(plan-orderings plan))
+	plan
+)
 
-
+(defun demote (operator link plan)
+  "Demotes an operator relative to a link.  Doesn't copy the plan."
+;; Move step C after A->B.
+	(push (order (link-to link) operator)
+		(plan-orderings plan))
+)
 
 (defun all-promotion-demotion-plans (plan threats)
   "Returns plans for each combination of promotions and demotions
@@ -625,42 +606,7 @@ are copies of the original plan."
   ;;; In that case you could also check for inconsistency right then and there too.
 )
 
-(defun promote (operator link plan)
-  "Promotes an operator relative to a link.  Doesn't copy the plan."
-;; Move step C before A->B.
-	(push (order operator (link-from link))
-		(plan-orderings plan))
-	plan
-)
-
-(defun demote (operator link plan)
-  "Demotes an operator relative to a link.  Doesn't copy the plan."
-;; Move step C after A->B.
-	(push (order (link-to link) operator)
-		(plan-orderings plan))
-)
-
-(defun threat-resolution-means (plan)
-  (declare (ignore plan))
-    (list 'promote-step
-          'demote-step))
-
-(defun resolve-threat (threat plan)
-	"Try to resolve a threat using whatever means are available.
-Threat is [operator.link]
-Return a list of candidate plans."
-	(dprint "resolve")
-	(loop for method in (threat-resolution-means plan) do
-		for new-plan* = (funcall method (car threat) (cdr threat) (copy-plan plan))
-		if (listp new-plan*)
-			append new-plan*
-		else collect new-plan*))
-
 (defun resolve-threats (plan threats current-depth max-depth)
-;;; 1. Doesn't currently use current-depth or max-depth -- probably needs to "abort"
-;;; current-depth > max-depth ... would that just give a "FAIL"?
-;;; 2. Also doesn't "SELECT-SUBGOAL" ... and has an undeclared "resolve-threat" - single.
-;;; 
   "Tries all combinations of solutions to all the threats in the plan,
 then recursively calls SELECT-SUBGOAL on them until one returns a
 solved plan.  Returns the solved plan, else nil if no solved plan. DAVID:NIL= FAIL?"
@@ -720,9 +666,11 @@ solved plan.  Returns the solved plan, else nil if no solved plan. DAVID:NIL= FA
     (dolist (effect (operator-effects operator))
 			(print effect)
       (push operator (gethash effect *operators-for-precond*)))))
+
 (defun set-up-plan (plan)
 	(setf (plan-num-preconditions plan) (length (operator-preconditions (plan-goal plan))))
 )
+
 (defun do-pop ()
   (let* ((start (make-operator
 		 :name 'start
@@ -758,9 +706,6 @@ solved plan.  Returns the solved plan, else nil if no solved plan. DAVID:NIL= FA
     solution))
 
 
-
-
-
 ;;;;; TWO-BLOCK-WORLD
 ;;;;; You have two blocks on the table, A and B.   Pretty simple, no?
 (defparameter *operators*
@@ -781,18 +726,6 @@ solved plan.  Returns the solved plan, else nil if no solved plan. DAVID:NIL= FA
 			 :effects '((t b-on-table) (nil b-on-a) (t a-clear))))
   "A list of strips operators without their uniq gensyms set yet -- 
 doesn't matter really -- but NOT including a goal or start operator")
-
-#|
-;;; b is on top of a
-(defparameter *start-effects*
-  '((t a-on-table) (t b-on-a) (t b-clear)))
-
-;;; a is on top of b
-(defparameter *goal-preconditions*
-  ;; somewhat redundant, is doable with just ((t a-on-b))
-  '((t a-on-table) (t b-on-table) (t b-clear)))
-|#
-
 
 ;;; b is on top of a
 (defparameter *start-effects*
@@ -855,9 +788,6 @@ doesn't matter really -- but NOT including a goal or start operator")
 ;;;; #[ (G7234)START -> (G7315)A-TABLE-TO-B ]
 ;;;; #[ (G7234)START -> (G7235)GOAL ]
 ;;;; >
-
-
-
 
 
 ;;;;;; THREE-BLOCK-WORLD
@@ -939,10 +869,10 @@ doesn't matter really -- but NOT including a goal or start operator")
    "A list of strips operators without their uniq gensyms set yet -- 
  doesn't matter really -- but NOT including a goal or start operator")
 
- (defparameter *start-effects*
+(defparameter *start-effects*
    ;; Sussman Anomaly
-   '((t a-on-table) (t b-on-table) (t c-on-a) (t b-clear) (t c-clear))
-   "A list of predicates which specify the initial state")
+	'((t a-on-table) (t b-on-table) (t c-on-a) (t b-clear) (t c-clear))
+  "A list of predicates which specify the initial state")
 
 ;; (defparameter *start-effects*
    ;; another simple situation: all on table
@@ -955,7 +885,6 @@ doesn't matter really -- but NOT including a goal or start operator")
 
 
 ;;;; An Example on the Sussman Anomaly:
-
 
 ;;;; CL-USER> (do-pop)
 ;;;;
@@ -1076,34 +1005,6 @@ doesn't matter really -- but NOT including a goal or start operator")
 ;;;; redefined, because the structure definition had created them and
 ;;;; I'm doing better copy functions.  That's expected.
 
-;;bench test
-(setf *debug* nil)
-
-(print "about to call bench test")
-(if *bench-test* (test-before-p))
-(test-inconsistent-p)
-(test-all-operators)
-(setf *debug* nil)
-;;(maphash #'(lambda (k v)
-;;						 (format t "~A = ~A~%" k v))
-;;			 *operators-for-precond*)
-(setf *debug* nil)
-;;(require :sb-sprof)
-
-;;(build-operators-for-precond)
-;;     (sb-sprof:with-profiling (:max-samples 1000000
-;;                               :mode :alloc
-;;                               :report :flat)
-;;       (test-all-operators-time-test))
-;;(test-all-effects)
-(print " done testing effectgs:?")
-
-;;(operator-threatens-link-p-test)
-;;(threats-test)
-;;(all-promotion-demotion-plans-test)
-;;(trace select-subgoal)
-;;(trace choose-operator)
-;;(trace resolve-threats)
 
 (do-pop)
 
