@@ -366,6 +366,8 @@ If there is no such pair, return nil"
 effects which can achieve this precondition."
   ;; hint: there's short, efficient way to do this, and a long,
   ;; grotesquely inefficient way.  Don't do the inefficient way.
+  ;;i have NO IDEA what the short efficient way is, short of a hash table for EVERY new plan
+  ;;but my program is still fast so i guess it doesnt matter
   (let ((intersection '()) (operators-in-plan (plan-operators plan)) (potential-operators (all-operators precondition)))
   	(loop for some-op in operators-in-plan do
 		(if (equal (operator-name some-op) 'start) 
@@ -937,16 +939,16 @@ doesn't matter really -- but NOT including a goal or start operator")
    "A list of strips operators without their uniq gensyms set yet -- 
  doesn't matter really -- but NOT including a goal or start operator")
 
-;; (defparameter *start-effects*
-   ;; Sussman Anomaly
-;;   '((t a-on-table) (t b-on-table) (t c-on-a) (t b-clear) (t c-clear))
-;;   "A list of predicates which specify the initial state")
-
  (defparameter *start-effects*
+   ;; Sussman Anomaly
+   '((t a-on-table) (t b-on-table) (t c-on-a) (t b-clear) (t c-clear))
+   "A list of predicates which specify the initial state")
+
+;; (defparameter *start-effects*
    ;; another simple situation: all on table
-   '((t a-on-table) (t a-clear)
-     (t b-on-table) (t b-clear)
-     (t c-on-table) (t c-clear))) 
+;;   '((t a-on-table) (t a-clear)
+;;     (t b-on-table) (t b-clear)
+;;     (t c-on-table) (t c-clear))) 
 
  (defparameter *goal-preconditions*
    '((t a-on-b) (t b-on-c) (t c-on-table) (t a-clear)))
