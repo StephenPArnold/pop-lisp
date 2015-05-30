@@ -1,15 +1,3 @@
-(setf *debug* nil)
-(setf *bench-test* t)
-(if *bench-test* (load "bench-test.lisp"))
-(defun dprint (some-variable &optional (additional-message '()))
-	"Debug Print - useful for allowing error/status messages
-to be printed while debug=t."
-  (if *debug*
-    (progn
-      (if additional-message (print additional-message) nil)
-      (print some-variable))
-    some-variable))
-
 ;;;;;;;; SIMPLE-PLAN
 ;;;;;;;; The following planner is a brute-force planning partial-order (POP) system.  
 ;;;;;;;; It doesn't use a heuristic, but instead just uses iterative-deepening search.  
