@@ -300,22 +300,22 @@ precond is a predicate."
 (defun operator-threatens-link-p (operator link plan)
   "T if operator threatens link in plan, because it's not ordered after
 or before the link, and it's got an effect which counters the link's effect."
-	(print "does")
-	(print (operator-name operator))
-	(print "threaten")
-	(print link)
+	(dprint "does")
+	(dprint (operator-name operator))
+	(dprint "threaten")
+	(dprint link)
 	(let ((not-link (cons (not  (link-precond link)) (rest (link-precond link)) ))) 
 		(loop for effect in (operator-effects operator) do
 			(if (equal effect not-link)
 				(if (or 
 					(reachable (plan-orderings plan) (operator-name operator) (operator-name (link-from link)))
 					(reachable (plan-orderings plan) (operator-name (link-to link)) (operator-name operator)))
-						(return-from operator-threatens-link-p (print nil) ) ;; if it's reachable, not a threat
-						(return-from operator-threatens-link-p (print t)) ;;else it is
+						(return-from operator-threatens-link-p (dprint nil) ) ;; if it's reachable, not a threat
+						(return-from operator-threatens-link-p (dprint t)) ;;else it is
 				)
 			)
 		))
-	(return-from operator-threatens-link-p (print nil))
+	(return-from operator-threatens-link-p (dprint nil))
 	
 	;;does it counter the link's effect?
 		;;if so,is the operator before or after the link ;; two reachable calls 
@@ -337,8 +337,8 @@ If there is no such pair, return nil"
 	;;;looks like he's suggesting we should use the functio link-exsists-for-precondition
 	;;link-exists-for-precondition-p (precond operator plan)
 	(loop for operator in (plan-operators plan) do
-		(loop for precondition (operator-preconditions operator)
-			(if (link-exist-for-precondition-p precondition operator plan)
+		(loop for precondition in (operator-preconditions operator) do
+			(if (link-exists-for-precondition-p precondition operator plan)
 				nil
 				(return-from pick-precond (cons operator precondition)))
 		)
@@ -408,12 +408,20 @@ an effect that can achieve this precondition."
   ;;^^ i'm afraid. so i'm making a hash table to make up for the potential of this being "grotesque"
 )
 
+
 (defun select-subgoal (plan current-depth max-depth)
-  "For all possible subgoals, recursively calls choose-operator
-on those subgoals.  Returns a solved plan, else nil if not solved."
-  	  (let ((my-precond (pick-precond plan)))	   
-	  	(choose-operator my-precond current-depth max-depth))
-	  
+	
+	(if (and (> (length (plan-links plan)) 11) (= (length (plan-operators plan)) 5))
+		(progn (dprint plan)
+			(dprint "####################"))
+		(progn (print (list (length (plan-links plan)) (length (plan-operators plan)))))
+	)
+	(let ((my-precond (pick-precond plan)))	   
+	  	(if my-precond
+			(dprint (choose-operator my-precond plan current-depth max-depth) "plan from select-subgoal:")
+			(progn (print "HEY THIS WORKS!!!!!!") (return-from select-subgoal plan)))
+	)
+	nil	  
 	  ;;; an enterprising student noted that the book says you DON'T have
 	  ;;; to nondeterministically choose from among all preconditions --
 	  ;;; you just pick one arbitrarily and that's all.  Note that the
@@ -427,8 +435,39 @@ on those subgoals.  Returns a solved plan, else nil if not solved."
 hook-up-operator for all possible operators in the plan.  If that
 doesn't work, recursively call add operators and call hook-up-operators
 on them.  Returns a solved plan, else nil if not solved."
-	;;for all effects
-		;;
+	(print "choose operator")	
+	;;for operators already in the plan that meet the precondition (just call (all-effects) to get that list)
+	(loop for operator in (all-effects (cdr op-precond-pair) plan) do
+			;;try this effect. (hook-up-operator effect) 
+			(print "trying1")
+			(print operator)
+			(let ((new-plan
+				(hook-up-operator operator (car op-precond-pair) (cdr op-precond-pair) plan current-depth max-depth nil)))
+				(if new-plan
+					(return-from choose-operator (dprint new-plan "new plan in choose-operator is"))
+					nil))
+			;;if it worked	;;return the plan
+	) 
+			;;for all operator templates (not in the plan yet)
+		;;try the operator with hook-up-operator
+		;;if it worked, return the plan
+	(print "about to dooperator templates")
+	(loop for operator in (all-operators (cdr op-precond-pair)) do
+			;;try this effect. (hook-up-operator effect) 
+			(print "trying2")
+			(print operator)
+			(let ((new-plan
+				(hook-up-operator 
+					(copy-operator operator)
+					(car op-precond-pair) (cdr op-precond-pair) plan current-depth max-depth t)))
+				(if new-plan
+					(return-from choose-operator (dprint new-plan "from choose operator:"))
+					nil))
+			;;if it worked	;;return the plan
+	)
+	;;
+	(dprint "returning nil from choose operator")
+	nil
 )
 
 
@@ -458,16 +497,26 @@ TO for the given PRECONDITION that FROM achieves for TO.  Then
 recursively  calls resolve-threats to fix any problems.  Presumes that
 PLAN is a copy that can be modified at will by HOOK-UP-OPERATOR. Returns a solved
 plan, else nil if not solved."
-  
-  (let ((new-plan (if new-oprator-was-added
+ (print "hook up ") 
+  (let ((new-plan (if new-operator-was-added
 			(add-operator from plan)
 			(copy-plan plan)))
 	(new-link (make-link :from from :to to :precond precondition)))
-
+	(push (cons from to) (plan-orderings plan))
+	(incf current-depth)
+	(if (> (length (plan-links plan))  max-depth) (progn (print "HEY RAN OUT OF LINKS") (print "hi") (sleep 10) (return-from hook-up-operator nil)))
   	(push new-link (plan-links new-plan))
 	;;(plan threats current-depth max-depth)	
-	(resolve-threats new-plan (threats new-plan (if new-operator-was-added from nil) new-link) current-depth max-depth) 
+	(let ((resolved-plan (resolve-threats new-plan (threats new-plan (if new-operator-was-added from nil) new-link) current-depth max-depth)))
+		(if resolved-plan
+			(dprint (return-from hook-up-operator resolved-plan) "plan from hook-up operator")
+			(progn (dprint "nil from hook-up")	nil)
+		)	
+	) 
+  	
   )
+  (dprint "nill from hookup 2")
+  nil
   ;;; hint: want to go fast?  The first thing you should do is
   ;;; test to see if TO is already ordered before FROM and thus
   ;;; hooking them up would make the plan inconsistent from the get-go
@@ -490,22 +539,31 @@ situations you need to check are the ones described in the previous paragraph.
 This function should assume that if MAYBE-THREATENING-OPERATOR is NIL, then no
 operator was added and we don't have to check for its threats.  However, we must
 always check for any operators which threaten MAYBE-THREATENED-LINK."
+  (dprint "maybe threat")
+  (dprint maybe-threatening-operator)
   (let ((threats nil)
 		(new-oper maybe-threatening-operator)
 		(new-link maybe-threatened-link))
 ;; Threat possibility: new step versus existing link.
-  	(print "before do-list")
-	(print (plan-links plan))	
-	(dolist (link (plan-links plan))
-    	(print "testing the link")
-	(print link)	
-	(when (operator-threatens-link-p new-oper link plan)
-     		(push (cons new-oper link) threats)))
-	(print "after do list")
+  	(dprint "before do-list")
+	(dprint (plan-links plan))
+	(if new-oper
+		(dolist (link (plan-links plan))
+    		(dprint "testing the link")
+		(dprint link)	
+		(dprint "OMG IF IT'S NIL I SHOLDNT BE HERE")
+		(dprint new-oper)
+		(when (operator-threatens-link-p new-oper link plan)
+     			(push (cons new-oper link) threats))))
+	
+	(dprint "after do list")
 ;; Threat possibility: new link versus existing operator.
-  		(dolist (operator (plan-operators plan))
-    		(when (operator-threatens-link-p operator new-link plan)
-					(push (cons operator new-link) threats)))
+  	(dolist (operator (plan-operators plan))
+    		(progn 
+		(dprint "the operator in the plan is")
+		(dprint operator)
+		(when (operator-threatens-link-p operator new-link plan)
+					(push (cons operator new-link) threats))))
   	threats)
 )
 
@@ -520,14 +578,14 @@ are copies of the original plan."
   (dprint plan)
   (let ((plan-list (copy-tree '())))
   	(loop for threat-plan in (binary-combinations (length threats)) do
-		(print threat-plan)
+		(dprint threat-plan)
 		(block outer-loop
 			(let ((new-plan (copy-plan plan)))
 				(dprint "new plan before dotimes")
 				(dprint new-plan)
 				(dotimes (x (length threat-plan))
 					(let ((threat (nth x threats)))
-						(dprint "new plan before if")
+						(dprint " plan before if")
 						(dprint new-plan)
 						(if (nth x threat-plan)
 							(promote (car threat) (cdr threat) new-plan)
@@ -572,7 +630,8 @@ are copies of the original plan."
 	"Try to resolve a threat using whatever means are available.
 Threat is [operator.link]
 Return a list of candidate plans."
-	(loop for method in (threat-resolution-means plan)
+	(print "resolve")
+	(loop for method in (threat-resolution-means plan) do
 		for new-plan* = (funcall method (car threat) (cdr threat) (copy-plan plan))
 		if (listp new-plan*)
 			append new-plan*
@@ -586,14 +645,25 @@ Return a list of candidate plans."
   "Tries all combinations of solutions to all the threats in the plan,
 then recursively calls SELECT-SUBGOAL on them until one returns a
 solved plan.  Returns the solved plan, else nil if no solved plan. DAVID:NIL= FAIL?"
-	(if (null threats) ;; threats = [operator.link]
-		(list plan)
-		(if (<= current-depth max-depth)
-			(loop for new-plan in (resolve-threat (first threats) plan)
-				(append (resolve-threats (rest threats) new-plan)))
-			(throw 'choose 1337)
+	;;for plan in (all-promotion-depromotion) 
+	(print "resolve threats")
+	(if (= (length threats) 0)
+		(let ((new-plan (select-subgoal plan current-depth max-depth)))
+			(progn (setf *debug* t) (dprint "hi in resolve special case") (dprint (return-from resolve-threats new-plan) "HI:: from resolve-threats special case"))
+			(progn (print  "returning nil from resolve-threats special case") (return-from resolve-threats nil))
+		)	
+	)
+	(loop for plan in (all-promotion-demotion-plans plan threats) do
+		;;call (select-subgoal plan)
+		(let ((new-plan (select-subgoal plan current-depth max-depth)))
+			(if new-plan
+				(progn (setf *debug* t) (dprint "hi in resolve") (dprint (return-from resolve-threats new-plan) "HI:: from resolve-threats"))
+				(progn (print  "returning nil from resolve-threats") nil)
+			)
 		)
 	)
+	(print "i got to the bottom of resolve-threats")
+	nil
 )
 
 ;;;;;;; DO-POP
@@ -646,12 +716,15 @@ solved plan.  Returns the solved plan, else nil if no solved plan. DAVID:NIL= FA
 	 solution)
     (build-operators-for-precond)
 ;; Do iterative deepening search on this sucker
-;;    (loop
-;;     (format t "~%Search Depth: ~d" depth)
-;;     (setf solution (select-subgoal plan 0 depth))
-;;     (when solution (return)) ;; break from loop, we're done!
-;;     (incf depth *depth-increment*))
+    (block loop (loop
+     (format t "~%Search Depth: ~d" depth)
+     (setf solution (select-subgoal plan 0 depth))
+     (when solution (return)) ;; break from loop, we're done!
+     (incf depth *depth-increment*)
+     (if (> depth 13) (return-from loop nil))))
     ;; found the answer if we got here
+    (print "value of solution is ")
+	(print solution) 
     (format t "~%Solution Discovered:~%~%")
     solution))
 
@@ -680,7 +753,16 @@ solved plan.  Returns the solved plan, else nil if no solved plan. DAVID:NIL= FA
   "A list of strips operators without their uniq gensyms set yet -- 
 doesn't matter really -- but NOT including a goal or start operator")
 
+#|
+;;; b is on top of a
+(defparameter *start-effects*
+  '((t a-on-table) (t b-on-a) (t b-clear)))
 
+;;; a is on top of b
+(defparameter *goal-preconditions*
+  ;; somewhat redundant, is doable with just ((t a-on-b))
+  '((t a-on-table) (t b-on-a) (t b-clear)))
+|#
 ;;; b is on top of a
 (defparameter *start-effects*
   '((t a-on-table) (t b-on-a) (t b-clear)))
@@ -970,11 +1052,11 @@ doesn't matter really -- but NOT including a goal or start operator")
 (if *bench-test* (test-before-p))
 (test-inconsistent-p)
 (test-all-operators)
-(setf *debug* t)
+(setf *debug* nil)
 ;;(maphash #'(lambda (k v)
 ;;						 (format t "~A = ~A~%" k v))
 ;;			 *operators-for-precond*)
-;;(setf *debug* nil)
+(setf *debug* nil)
 ;;(require :sb-sprof)
 
 ;;(build-operators-for-precond)
@@ -987,4 +1069,7 @@ doesn't matter really -- but NOT including a goal or start operator")
 
 ;;(operator-threatens-link-p-test)
 ;;(threats-test)
-(all-promotion-demotion-plans-test)
+;;(all-promotion-demotion-plans-test)
+
+(do-pop)
+
