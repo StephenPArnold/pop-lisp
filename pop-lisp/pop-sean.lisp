@@ -161,7 +161,7 @@ it unique as far as EQUALP is concerned.  Returns the copy."
 (defstruct (plan (:print-function print-plan))
   "A collection of lists of operators, orderings, and links,
 plus a pointer to the start operator and to the goal operator."
-  operators orderings links start goal)
+  num-preconditions operators orderings links start goal)
 
 (defun print-plan (p stream depth)
   "Helper function print plan in a pretty way"
@@ -304,6 +304,11 @@ or before the link, and it's got an effect which counters the link's effect."
 	(dprint (operator-name operator))
 	(dprint "threaten")
 	(dprint link)
+	(if (or 
+		(equal (operator-uniq operator) (operator-uniq (link-from link)))
+		(equal (operator-uniq operator) (operator-uniq (link-to link))))
+		(return-from operator-threatens-link-p nil)	
+	)
 	(let ((not-link (cons (not  (link-precond link)) (rest (link-precond link)) ))) 
 		(loop for effect in (operator-effects operator) do
 			(if (equal effect not-link)
@@ -370,6 +375,9 @@ effects which can achieve this precondition."
 		) 
 		(if (member some-op potential-operators :test #'same-op-name) (push some-op intersection) ())
 	)
+	(dprint "everything in the plan that can do")
+	(dprint precondition)
+	(dprint intersection)
   intersection)
 )
 
@@ -380,7 +388,10 @@ effects which can achieve this precondition."
 (defun all-operators (precondition)
   "Given a precondition, returns a list of ALL operator templates which have
 an effect that can achieve this precondition."
-  (gethash precondition *operators-for-precond*)
+  (dprint "all operator templates that can do")
+	(dprint precondition)
+	 
+ (dprint (gethash precondition *operators-for-precond*))
    ;; hint: there's short, efficient way to do this, and a long,
   ;; grotesquely inefficient way.  Don't do the inefficient way.
   ;;^^ i'm afraid. so i'm making a hash table to make up for the potential of this being "grotesque"
@@ -414,13 +425,17 @@ an effect that can achieve this precondition."
 	(if (and (> (length (plan-links plan)) 11) (= (length (plan-operators plan)) 5))
 		(progn (dprint plan)
 			(dprint "####################"))
-		(progn (print (list (length (plan-links plan)) (length (plan-operators plan)))))
+		(progn (dprint (list (length (plan-links plan)) (length (plan-operators plan)))))
 	)
 	(let ((my-precond (pick-precond plan)))	   
 	  	(if my-precond
-			(dprint (choose-operator my-precond plan current-depth max-depth) "plan from select-subgoal:")
-			(progn (print "HEY THIS WORKS!!!!!!") (return-from select-subgoal plan)))
+			(let ((new-plan (dprint (choose-operator my-precond plan current-depth max-depth) "plan from select-subgoal:")))
+			(if new-plan
+				(return-from select-subgoal new-plan)
+				nil))
+			(progn (print "HEY THIS WORKS!!!!!!") (sleep 1) (print plan) (return-from select-subgoal plan)))
 	)
+	(dprint "select subgoal returning nil")
 	nil	  
 	  ;;; an enterprising student noted that the book says you DON'T have
 	  ;;; to nondeterministically choose from among all preconditions --
@@ -435,38 +450,38 @@ an effect that can achieve this precondition."
 hook-up-operator for all possible operators in the plan.  If that
 doesn't work, recursively call add operators and call hook-up-operators
 on them.  Returns a solved plan, else nil if not solved."
-	(print "choose operator")	
+	(dprint "choose operator")	
 	;;for operators already in the plan that meet the precondition (just call (all-effects) to get that list)
 	(loop for operator in (all-effects (cdr op-precond-pair) plan) do
 			;;try this effect. (hook-up-operator effect) 
-			(print "trying1")
-			(print operator)
+			(dprint "trying1")
+			(dprint operator)
 			(let ((new-plan
 				(hook-up-operator operator (car op-precond-pair) (cdr op-precond-pair) plan current-depth max-depth nil)))
 				(if new-plan
-					(return-from choose-operator (dprint new-plan "new plan in choose-operator is"))
+					(progn (dprint "returning from choose-operator 1") (return-from choose-operator (dprint new-plan "new plan in choose-operator is")))
 					nil))
 			;;if it worked	;;return the plan
 	) 
 			;;for all operator templates (not in the plan yet)
 		;;try the operator with hook-up-operator
 		;;if it worked, return the plan
-	(print "about to dooperator templates")
+	(dprint "about to dooperator templates")
 	(loop for operator in (all-operators (cdr op-precond-pair)) do
 			;;try this effect. (hook-up-operator effect) 
-			(print "trying2")
-			(print operator)
+			(dprint "trying2")
+			(dprint operator)
 			(let ((new-plan
 				(hook-up-operator 
 					(copy-operator operator)
 					(car op-precond-pair) (cdr op-precond-pair) plan current-depth max-depth t)))
 				(if new-plan
-					(return-from choose-operator (dprint new-plan "from choose operator:"))
+					(progn (dprint "returning from trying2 in choose-operator") (return-from choose-operator (dprint new-plan "from choose operator:")))
 					nil))
 			;;if it worked	;;return the plan
 	)
 	;;
-	(dprint "returning nil from choose operator")
+	(dprint "returning nil from choose operator2")
 	nil
 )
 
@@ -479,8 +494,9 @@ the copied plan, and hooks up the orderings so that the new operator is
 after start and before goal.  Returns the modified copy of the plan."
   (let ((new-plan (copy-plan plan) ))
   	(push operator (plan-operators new-plan))
-	(push (cons (plan-start new-plan) operator) (plan-orderings new-plan))
-	(push (cons operator (plan-goal new-plan)) (plan-orderings new-plan))
+	(pushnew (cons (plan-start new-plan) operator) (plan-orderings new-plan) :test #'equal)
+	(pushnew (cons operator (plan-goal new-plan)) (plan-orderings new-plan) :test #'equal)
+	(setf (plan-num-preconditions new-plan) (+ (plan-num-preconditions new-plan) (length (operator-preconditions operator))))
 	new-plan
   )
   ;;; hint: make sure you copy the plan!
@@ -497,19 +513,20 @@ TO for the given PRECONDITION that FROM achieves for TO.  Then
 recursively  calls resolve-threats to fix any problems.  Presumes that
 PLAN is a copy that can be modified at will by HOOK-UP-OPERATOR. Returns a solved
 plan, else nil if not solved."
- (print "hook up ") 
+ (dprint "hook up ") 
   (let ((new-plan (if new-operator-was-added
 			(add-operator from plan)
 			(copy-plan plan)))
 	(new-link (make-link :from from :to to :precond precondition)))
-	(push (cons from to) (plan-orderings plan))
+	(pushnew (cons from to) (plan-orderings new-plan) :test #'equal)
 	(incf current-depth)
-	(if (> (length (plan-links plan))  max-depth) (progn (print "HEY RAN OUT OF LINKS") (print "hi") (sleep 10) (return-from hook-up-operator nil)))
+	(dprint new-plan)
+	(if (> (plan-num-preconditions plan)  max-depth) (progn (dprint "HEY RAN OUT OF LINKS") (dprint (length (plan-links plan)))  (return-from hook-up-operator nil)))
   	(push new-link (plan-links new-plan))
 	;;(plan threats current-depth max-depth)	
 	(let ((resolved-plan (resolve-threats new-plan (threats new-plan (if new-operator-was-added from nil) new-link) current-depth max-depth)))
 		(if resolved-plan
-			(dprint (return-from hook-up-operator resolved-plan) "plan from hook-up operator")
+			(progn (dprint "end hookup1") (dprint (return-from hook-up-operator resolved-plan) "plan from hook-up operator"))
 			(progn (dprint "nil from hook-up")	nil)
 		)	
 	) 
@@ -630,7 +647,7 @@ are copies of the original plan."
 	"Try to resolve a threat using whatever means are available.
 Threat is [operator.link]
 Return a list of candidate plans."
-	(print "resolve")
+	(dprint "resolve")
 	(loop for method in (threat-resolution-means plan) do
 		for new-plan* = (funcall method (car threat) (cdr threat) (copy-plan plan))
 		if (listp new-plan*)
@@ -646,23 +663,30 @@ Return a list of candidate plans."
 then recursively calls SELECT-SUBGOAL on them until one returns a
 solved plan.  Returns the solved plan, else nil if no solved plan. DAVID:NIL= FAIL?"
 	;;for plan in (all-promotion-depromotion) 
-	(print "resolve threats")
+	(dprint "resolve threats")
 	(if (= (length threats) 0)
 		(let ((new-plan (select-subgoal plan current-depth max-depth)))
-			(progn (setf *debug* t) (dprint "hi in resolve special case") (dprint (return-from resolve-threats new-plan) "HI:: from resolve-threats special case"))
-			(progn (print  "returning nil from resolve-threats special case") (return-from resolve-threats nil))
+			(progn  (dprint "hi in resolve special case") (dprint (return-from resolve-threats new-plan) "HI:: from resolve-threats special case"))
+			(progn (dprint  "returning nil from resolve-threats special case") (return-from resolve-threats nil))
 		)	
 	)
-	(loop for plan in (all-promotion-demotion-plans plan threats) do
+	(dprint "all the potential demotion plans:")
+	(dprint (all-promotion-demotion-plans plan threats))
+	(dprint plan)
+	(dprint "threats:")
+	(dprint threats)
+	(loop for some-plan in (all-promotion-demotion-plans plan threats) do
+		(dprint "trying out")
+		(dprint some-plan)
 		;;call (select-subgoal plan)
-		(let ((new-plan (select-subgoal plan current-depth max-depth)))
+		(let ((new-plan (select-subgoal some-plan current-depth max-depth)))
 			(if new-plan
-				(progn (setf *debug* t) (dprint "hi in resolve") (dprint (return-from resolve-threats new-plan) "HI:: from resolve-threats"))
-				(progn (print  "returning nil from resolve-threats") nil)
+				(progn  (dprint "hi in resolve-threats, we made it") (dprint (return-from resolve-threats new-plan) "HI:: from resolve-threats"))
+				(progn (dprint  "returning nil from resolve-threats") nil)
 			)
 		)
 	)
-	(print "i got to the bottom of resolve-threats")
+	(dprint "i got to the bottom of resolve-threats")
 	nil
 )
 
@@ -694,7 +718,9 @@ solved plan.  Returns the solved plan, else nil if no solved plan. DAVID:NIL= FA
     (dolist (effect (operator-effects operator))
 			(print effect)
       (push operator (gethash effect *operators-for-precond*)))))
-
+(defun set-up-plan (plan)
+	(setf (plan-num-preconditions plan) (length (operator-preconditions (plan-goal plan))))
+)
 (defun do-pop ()
   (let* ((start (make-operator
 		 :name 'start
@@ -715,13 +741,14 @@ solved plan.  Returns the solved plan, else nil if no solved plan. DAVID:NIL= FA
 	 (depth *depth-increment*)
 	 solution)
     (build-operators-for-precond)
+    (set-up-plan plan)
 ;; Do iterative deepening search on this sucker
     (block loop (loop
      (format t "~%Search Depth: ~d" depth)
      (setf solution (select-subgoal plan 0 depth))
      (when solution (return)) ;; break from loop, we're done!
      (incf depth *depth-increment*)
-     (if (> depth 13) (return-from loop nil))))
+     (if (> depth 14) (return-from loop nil))))
     ;; found the answer if we got here
     (print "value of solution is ")
 	(print solution) 
@@ -761,8 +788,10 @@ doesn't matter really -- but NOT including a goal or start operator")
 ;;; a is on top of b
 (defparameter *goal-preconditions*
   ;; somewhat redundant, is doable with just ((t a-on-b))
-  '((t a-on-table) (t b-on-a) (t b-clear)))
+  '((t a-on-table) (t b-on-table) (t b-clear)))
 |#
+
+
 ;;; b is on top of a
 (defparameter *start-effects*
   '((t a-on-table) (t b-on-a) (t b-clear)))
@@ -771,7 +800,6 @@ doesn't matter really -- but NOT including a goal or start operator")
 (defparameter *goal-preconditions*
   ;; somewhat redundant, is doable with just ((t a-on-b))
   '((t a-on-b) (t b-on-table) (t a-clear)))
-
 
 ;;;;;; A solution to the two-block blocks world problem:
 ;;;; CL-USER> (do-pop)
@@ -846,81 +874,82 @@ doesn't matter really -- but NOT including a goal or start operator")
 ;;; commit to constants.  That makes our search space much nastier.
 ;;; C'est la vie!
 ;;;
-;; (defparameter *operators*
-;;   (list
-;;    ;; move from table operators
-;;    (make-operator :name 'a-table-to-b
-;; 		  :preconditions '((t a-on-table) (t b-clear) (t a-clear))
-;; 		  :effects '((nil a-on-table) (nil b-clear) (t a-on-b)))
-;;    (make-operator :name 'a-table-to-c
-;; 		  :preconditions '((t a-on-table) (t c-clear) (t a-clear))
-;; 		  :effects '((nil a-on-table) (nil c-clear) (t a-on-c)))
-;;    (make-operator :name 'b-table-to-a
-;; 		  :preconditions '((t b-on-table) (t a-clear) (t b-clear))
-;; 		  :effects '((nil b-on-table) (nil a-clear) (t b-on-a)))
-;;    (make-operator :name 'b-table-to-c
-;; 		  :preconditions '((t b-on-table) (t c-clear) (t b-clear))
-;; 		  :effects '((nil b-on-table) (nil c-clear) (t b-on-c)))
-;;    (make-operator :name 'c-table-to-a
-;; 		  :preconditions '((t c-on-table) (t a-clear) (t c-clear))
-;; 		  :effects '((nil c-on-table) (nil a-clear) (t c-on-a)))
-;;    (make-operator :name 'c-table-to-b
-;; 		  :preconditions '((t c-on-table) (t b-clear) (t c-clear))
-;; 		  :effects '((nil c-on-table) (nil b-clear) (t c-on-b)))
-;;    ;; move to table operators
-;;    (make-operator :name 'a-b-to-table
-;; 		  :preconditions '((t a-on-b) (t a-clear))
-;; 		  :effects '((t a-on-table) (nil a-on-b) (t b-clear)))
-;;    (make-operator :name 'a-c-to-table
-;; 		  :preconditions '((t a-on-c) (t a-clear))
-;; 		  :effects '((t a-on-table) (nil a-on-c) (t c-clear)))
-;;    (make-operator :name 'b-a-to-table
-;; 		  :preconditions '((t b-on-a) (t b-clear))
-;; 		  :effects '((t b-on-table) (nil b-on-a) (t a-clear)))
-;;    (make-operator :name 'b-c-to-table
-;; 		  :preconditions '((t b-on-c) (t b-clear))
-;; 		  :effects '((t b-on-table) (nil b-on-c) (t c-clear)))
-;;    (make-operator :name 'c-a-to-table
-;; 		  :preconditions '((t c-on-a) (t c-clear))
-;; 		  :effects '((t c-on-table) (nil c-on-a) (t a-clear)))
-;;    (make-operator :name 'c-b-to-table
-;; 		  :preconditions '((t c-on-b) (t c-clear))
-;; 		  :effects '((t c-on-table) (nil c-on-b) (t b-clear)))
-;;    ;; block-to-block operators
-;;    (make-operator :name 'a-b-to-c
-;; 		  :preconditions '((t a-on-b) (t a-clear) (t c-clear))
-;; 		  :effects '((nil a-on-b) (t a-on-c) (nil c-clear) (t b-clear)))
-;;    (make-operator :name 'a-c-to-b
-;; 		  :preconditions '((t a-on-c) (t a-clear) (t b-clear))
-;; 		  :effects '((nil a-on-c) (t a-on-b) (nil b-clear) (t c-clear)))
-;;    (make-operator :name 'b-a-to-c
-;; 		  :preconditions '((t b-on-a) (t b-clear) (t c-clear))
-;; 		  :effects '((nil b-on-a) (t b-on-c) (nil c-clear) (t a-clear)))
-;;    (make-operator :name 'b-c-to-a
-;; 		  :preconditions '((t b-on-c) (t b-clear) (t a-clear))
-;; 		  :effects '((nil b-on-c) (t b-on-a) (nil a-clear) (t c-clear)))
-;;    (make-operator :name 'c-a-to-b
-;; 		  :preconditions '((t c-on-a) (t c-clear) (t b-clear))
-;; 		  :effects '((nil c-on-a) (t c-on-b) (nil b-clear) (t a-clear)))
-;;    (make-operator :name 'c-b-to-a
-;; 		  :preconditions '((t c-on-b) (t c-clear) (t a-clear))
-;; 		  :effects '((nil c-on-b) (t c-on-a) (nil a-clear) (t b-clear))))
-;;   "A list of strips operators without their uniq gensyms set yet -- 
-;; doesn't matter really -- but NOT including a goal or start operator")
+
+ (defparameter *operators*
+   (list
+    ;; move from table operators
+    (make-operator :name 'a-table-to-b
+ 		  :preconditions '((t a-on-table) (t b-clear) (t a-clear))
+ 		  :effects '((nil a-on-table) (nil b-clear) (t a-on-b)))
+    (make-operator :name 'a-table-to-c
+ 		  :preconditions '((t a-on-table) (t c-clear) (t a-clear))
+ 		  :effects '((nil a-on-table) (nil c-clear) (t a-on-c)))
+    (make-operator :name 'b-table-to-a
+ 		  :preconditions '((t b-on-table) (t a-clear) (t b-clear))
+ 		  :effects '((nil b-on-table) (nil a-clear) (t b-on-a)))
+    (make-operator :name 'b-table-to-c
+ 		  :preconditions '((t b-on-table) (t c-clear) (t b-clear))
+ 		  :effects '((nil b-on-table) (nil c-clear) (t b-on-c)))
+    (make-operator :name 'c-table-to-a
+ 		  :preconditions '((t c-on-table) (t a-clear) (t c-clear))
+ 		  :effects '((nil c-on-table) (nil a-clear) (t c-on-a)))
+    (make-operator :name 'c-table-to-b
+ 		  :preconditions '((t c-on-table) (t b-clear) (t c-clear))
+ 		  :effects '((nil c-on-table) (nil b-clear) (t c-on-b)))
+    ;; move to table operators
+    (make-operator :name 'a-b-to-table
+ 		  :preconditions '((t a-on-b) (t a-clear))
+ 		  :effects '((t a-on-table) (nil a-on-b) (t b-clear)))
+    (make-operator :name 'a-c-to-table
+		  :preconditions '((t a-on-c) (t a-clear))
+ 		  :effects '((t a-on-table) (nil a-on-c) (t c-clear)))
+    (make-operator :name 'b-a-to-table
+ 		  :preconditions '((t b-on-a) (t b-clear))
+ 		  :effects '((t b-on-table) (nil b-on-a) (t a-clear)))
+    (make-operator :name 'b-c-to-table
+ 		  :preconditions '((t b-on-c) (t b-clear))
+ 		  :effects '((t b-on-table) (nil b-on-c) (t c-clear)))
+    (make-operator :name 'c-a-to-table
+ 		  :preconditions '((t c-on-a) (t c-clear))
+ 		  :effects '((t c-on-table) (nil c-on-a) (t a-clear)))
+    (make-operator :name 'c-b-to-table
+ 		  :preconditions '((t c-on-b) (t c-clear))
+ 		  :effects '((t c-on-table) (nil c-on-b) (t b-clear)))
+    ;; block-to-block operators
+    (make-operator :name 'a-b-to-c
+ 		  :preconditions '((t a-on-b) (t a-clear) (t c-clear))
+ 		  :effects '((nil a-on-b) (t a-on-c) (nil c-clear) (t b-clear)))
+    (make-operator :name 'a-c-to-b
+ 		  :preconditions '((t a-on-c) (t a-clear) (t b-clear))
+ 		  :effects '((nil a-on-c) (t a-on-b) (nil b-clear) (t c-clear)))
+    (make-operator :name 'b-a-to-c
+ 		  :preconditions '((t b-on-a) (t b-clear) (t c-clear))
+ 		  :effects '((nil b-on-a) (t b-on-c) (nil c-clear) (t a-clear)))
+    (make-operator :name 'b-c-to-a
+ 		  :preconditions '((t b-on-c) (t b-clear) (t a-clear))
+ 		  :effects '((nil b-on-c) (t b-on-a) (nil a-clear) (t c-clear)))
+    (make-operator :name 'c-a-to-b
+ 		  :preconditions '((t c-on-a) (t c-clear) (t b-clear))
+ 		  :effects '((nil c-on-a) (t c-on-b) (nil b-clear) (t a-clear)))
+    (make-operator :name 'c-b-to-a
+ 		  :preconditions '((t c-on-b) (t c-clear) (t a-clear))
+ 		  :effects '((nil c-on-b) (t c-on-a) (nil a-clear) (t b-clear))))
+   "A list of strips operators without their uniq gensyms set yet -- 
+ doesn't matter really -- but NOT including a goal or start operator")
 
 ;; (defparameter *start-effects*
-;;   ;; Sussman Anomaly
+   ;; Sussman Anomaly
 ;;   '((t a-on-table) (t b-on-table) (t c-on-a) (t b-clear) (t c-clear))
 ;;   "A list of predicates which specify the initial state")
 
-;; (defparameter *start-effects*
-;;   ;; another simple situation: all on table
-;;   '((t a-on-table) (t a-clear)
-;;     (t b-on-table) (t b-clear)
-;;     (t c-on-table) (t c-clear))) 
+ (defparameter *start-effects*
+   ;; another simple situation: all on table
+   '((t a-on-table) (t a-clear)
+     (t b-on-table) (t b-clear)
+     (t c-on-table) (t c-clear))) 
 
-;; (defparameter *goal-preconditions*
-;;   '((t a-on-b) (t b-on-c) (t c-on-table) (t a-clear)))
+ (defparameter *goal-preconditions*
+   '((t a-on-b) (t b-on-c) (t c-on-table) (t a-clear)))
 
 
 ;;;; An Example on the Sussman Anomaly:
@@ -1070,6 +1099,9 @@ doesn't matter really -- but NOT including a goal or start operator")
 ;;(operator-threatens-link-p-test)
 ;;(threats-test)
 ;;(all-promotion-demotion-plans-test)
+;;(trace select-subgoal)
+;;(trace choose-operator)
+;;(trace resolve-threats)
 
 (do-pop)
 
