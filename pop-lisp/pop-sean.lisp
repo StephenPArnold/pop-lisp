@@ -625,15 +625,13 @@ solved plan.  Returns the solved plan, else nil if no solved plan."
     (build-operators-for-precond)
     (set-up-plan plan)
 ;; Do iterative deepening search on this sucker
-    (block loop (loop
+     (loop
      (format t "~%Search Depth: ~d" depth)
      (setf solution (select-subgoal plan 0 depth))
      (when solution (return)) ;; break from loop, we're done!
      (incf depth *depth-increment*)
-     (if (> depth 14) (return-from loop nil))))
+     )
     ;; found the answer if we got here
-    (print "value of solution is ")
-	(print solution) 
     (format t "~%Solution Discovered:~%~%")
     solution))
 
@@ -938,5 +936,5 @@ doesn't matter really -- but NOT including a goal or start operator")
 ;;;; I'm doing better copy functions.  That's expected.
 
 
-(do-pop)
+;;(do-pop)
 
